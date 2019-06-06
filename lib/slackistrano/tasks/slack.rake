@@ -19,31 +19,35 @@ end
 namespace :slack do
   namespace :deploy do
     task :add_default_hooks do
-      before 'deploy:starting', 'slack:deploy:updating'
-      before 'deploy:reverting', 'slack:deploy:reverting'
-      after 'deploy:finishing', 'slack:deploy:updated'
-      after 'deploy:finishing_rollback', 'slack:deploy:reverted'
+      # show the starting message as soon as possible
+      before 'deploy:starting', 'slack:deploy:starting'
+      
+      # show the finished message as late as possible
+      after 'deploy:finished', 'slack:deploy:finished'
+      
+      # For the above tasks, the earliest we could show the starting messages is
+      # before the "deploy" and "deploy:rollback" tasks. The latest we can show
+      # the finished messages is after those tasks.
+      
       after 'deploy:failed', 'slack:deploy:failed'
     end
 
-    desc 'Notify about updating deploy'
-    task :updating do
-      Slackistrano::Capistrano.new(self).run(:updating)
+    desc 'Notify about starting deploy'
+    task :starting do
+      if fetch(:deploying)
+        Slackistrano::Capistrano.new(self).run(:updating)
+      else
+        Slackistrano::Capistrano.new(self).run(:reverting)
+      end
     end
 
-    desc 'Notify about reverting deploy'
-    task :reverting do
-      Slackistrano::Capistrano.new(self).run(:reverting)
-    end
-
-    desc 'Notify about updated deploy'
-    task :updated do
-      Slackistrano::Capistrano.new(self).run(:updated)
-    end
-
-    desc 'Notify about reverted deploy'
-    task :reverted do
-      Slackistrano::Capistrano.new(self).run(:reverted)
+    desc 'Notify about finished deploy'
+    task :finished do
+      if fetch(:deploying)
+        Slackistrano::Capistrano.new(self).run(:updated)
+      else
+        Slackistrano::Capistrano.new(self).run(:reverted)
+      end
     end
 
     desc 'Notify about failed deploy'
@@ -52,7 +56,7 @@ namespace :slack do
     end
 
     desc 'Test Slack integration'
-    task test: %i[updating updated reverting reverted failed] do
+    task test: %i[starting published failed] do
       # all tasks run as dependencies
     end
   end
