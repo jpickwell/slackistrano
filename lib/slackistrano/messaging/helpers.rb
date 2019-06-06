@@ -1,9 +1,15 @@
+# frozen_string_literal: true
+
+require 'English'
+
 module Slackistrano
   module Messaging
     module Helpers
-
       def icon_url
-        options.fetch(:icon_url, 'https://raw.githubusercontent.com/phallstrom/slackistrano/master/images/slackistrano.png')
+        options.fetch(
+          :icon_url,
+          'https://raw.githubusercontent.com/phallstrom/slackistrano/master/images/slackistrano.png'
+        )
       end
 
       def icon_emoji
@@ -31,15 +37,12 @@ module Slackistrano
         fetch(:stage, default)
       end
 
-      #
       # Return the elapsed running time as a string.
       #
       # Examples: 21-18:26:30, 15:28:37, 01:14
-      #
       def elapsed_time
-        `ps -p #{$$} -o etime=`.strip
+        `ps -p #{$PID} -o etime=`.strip
       end
-
     end
   end
 end

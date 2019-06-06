@@ -1,12 +1,16 @@
+# frozen_string_literal: true
+
 namespace :deploy do
-  task :updating do
-  end
-  task :reverting do
-  end
-  task :finishing do
-  end
-  task :finishing_rollback do
-  end
-  task :failed do
-  end
+  task :starting
+  task :started
+  task :updating
+  task :updated
+  task :reverting
+  task :reverted
+  task :publishing
+  task :published
+  task :finishing
+  task :finishing_rollback
+  task :finished
+  task :failed
 end

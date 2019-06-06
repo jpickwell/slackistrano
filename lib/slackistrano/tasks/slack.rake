@@ -1,6 +1,7 @@
+# frozen_string_literal: true
+
 namespace :slack do
   namespace :deploy do
-
     desc 'Notify about updating deploy'
     task :updating do
       Slackistrano::Capistrano.new(self).run(:updating)
@@ -27,15 +28,14 @@ namespace :slack do
     end
 
     desc 'Test Slack integration'
-    task :test => %i[updating updated reverting reverted failed] do
+    task test: %i[updating updated reverting reverted failed] do
       # all tasks run as dependencies
     end
-
   end
 end
 
-before 'deploy:updating',           'slack:deploy:updating'
-before 'deploy:reverting',          'slack:deploy:reverting'
-after  'deploy:finishing',          'slack:deploy:updated'
-after  'deploy:finishing_rollback', 'slack:deploy:reverted'
-after  'deploy:failed',             'slack:deploy:failed'
+before 'deploy:updating', 'slack:deploy:updating'
+before 'deploy:reverting', 'slack:deploy:reverting'
+after 'deploy:finishing', 'slack:deploy:updated'
+after 'deploy:finishing_rollback', 'slack:deploy:reverted'
+after 'deploy:failed', 'slack:deploy:failed'

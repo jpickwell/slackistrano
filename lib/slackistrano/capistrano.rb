@@ -1,90 +1,99 @@
-require_relative 'messaging/base'
-require 'net/http'
-require 'json'
-require 'forwardable'
+# frozen_string_literal: true
 
-load File.expand_path("../tasks/slack.rake", __FILE__)
+require 'forwardable'
+require 'json'
+require 'net/http'
+require_relative 'messaging/base'
+
+load File.expand_path('tasks/slack.rake', __dir__)
 
 module Slackistrano
   class Capistrano
-
-    attr_reader :backend
-    private :backend
-
     extend Forwardable
+
     def_delegators :env, :fetch, :run_locally
 
     def initialize(env)
       @env = env
       config = fetch(:slackistrano, {})
-      @messaging = case config
-                   when false
-                     Messaging::Null.new
-                   when -> (o) { o.empty? }
-                     klass = Messaging::Deprecated.new(
-                       env: @env,
-                       team: fetch(:slack_team),
-                       channel: fetch(:slack_channel),
-                       token: fetch(:slack_token),
-                       webhook: fetch(:slack_webhook)
-                     )
-                   else
-                     opts = config.dup.merge(env: @env)
-                     klass = opts.delete(:klass) || Messaging::Default
-                     klass.new(opts)
-                   end
+
+      @messaging =
+        case config
+        when false
+          Messaging::Null.new
+        when ->(o) { o.empty? }
+          Messaging::Deprecated.new(
+            env: @env,
+            team: fetch(:slack_team),
+            channel: fetch(:slack_channel),
+            token: fetch(:slack_token),
+            webhook: fetch(:slack_webhook)
+          )
+        else
+          opts = config.dup.merge(env: @env)
+          klass = opts.delete(:klass) || Messaging::Default
+          klass.new(opts)
+        end
     end
 
     def run(action)
-      _self = self
-      run_locally { _self.process(action, self) }
+      this = self
+      run_locally { this.process(action, self) }
     end
 
     def process(action, backend)
       @backend = backend
-
       payload = @messaging.payload_for(action)
+
       return if payload.nil?
 
-      payload = {
-        username: @messaging.username,
-        icon_url: @messaging.icon_url,
-        icon_emoji: @messaging.icon_emoji,
-      }.merge(payload)
+      payload =
+        {
+          username: @messaging.username,
+          icon_url: @messaging.icon_url,
+          icon_emoji: @messaging.icon_emoji
+        }.merge(payload)
 
       channels = Array(@messaging.channels_for(action))
-      if !@messaging.via_slackbot? && channels.empty?
-        channels = [nil] # default webhook channel
-      end
 
-      channels.each do |channel|
-        post(payload.merge(channel: channel))
-      end
+      # default webhook channel
+      channels = [nil] if !@messaging.via_slackbot? && channels.empty?
+
+      channels.each { |channel| post(payload.merge(channel: channel)) }
     end
 
-    private ##################################################
+    private
+
+    attr_reader :backend
 
     def post(payload)
-
       if dry_run?
         post_dry_run(payload)
+
         return
       end
 
       begin
         response = post_to_slack(payload)
-      rescue => e
-        backend.warn("[slackistrano] Error notifying Slack!")
+      rescue StandardError => e
+        response = nil
+
+        backend.warn('[slackistrano] Error notifying Slack!')
         backend.warn("[slackistrano]   Error: #{e.inspect}")
       end
 
-      if response && response.code !~ /^2/
-        warn("[slackistrano] Slack API Failure!")
-        warn("[slackistrano]   URI: #{response.uri}")
-        warn("[slackistrano]   Code: #{response.code}")
-        warn("[slackistrano]   Message: #{response.message}")
-        warn("[slackistrano]   Body: #{response.body}") if response.message != response.body && response.body !~ /<html/
+      return unless response && response.code !~ /^2/
+
+      warn('[slackistrano] Slack API Failure!')
+      warn("[slackistrano]   URI: #{response.uri}")
+      warn("[slackistrano]   Code: #{response.code}")
+      warn("[slackistrano]   Message: #{response.message}")
+
+      unless response.message != response.body && response.body !~ /<html/
+        return
       end
+
+      warn("[slackistrano]   Body: #{response.body}")
     end
 
     def post_to_slack(payload = {})
@@ -96,16 +105,29 @@ module Slackistrano
     end
 
     def post_to_slack_as_slackbot(payload = {})
-      uri = URI(URI.encode("https://#{@messaging.team}.slack.com/services/hooks/slackbot?token=#{@messaging.token}&channel=#{payload[:channel]}"))
-      text = (payload[:attachments] || [payload]).collect { |a| a[:text] }.join("\n")
+      team = @messaging.team
+      token = @messaging.token
+      channel = payload[:channel]
+      uri =
+        URI(
+          CGI.escape(
+            "https://#{team}.slack.com/services/hooks/slackbot" \
+              "?token=#{token}&channel=#{channel}"
+          )
+        )
+
+      text =
+        (payload[:attachments] || [payload]).collect { |a| a[:text] }.join("\n")
+
       Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
-        http.request_post uri, text
+        http.request_post(uri, text)
       end
     end
 
     def post_to_slack_as_webhook(payload = {})
-      params = {'payload' => payload.to_json}
+      params = { 'payload' => payload.to_json }
       uri = URI(@messaging.webhook)
+
       Net::HTTP.post_form(uri, params)
     end
 
@@ -114,15 +136,16 @@ module Slackistrano
     end
 
     def post_dry_run(payload)
-        backend.info("[slackistrano] Slackistrano Dry Run:")
+      backend.info('[slackistrano] Slackistrano Dry Run:')
+
       if @messaging.via_slackbot?
         backend.info("[slackistrano]   Team: #{@messaging.team}")
         backend.info("[slackistrano]   Token: #{@messaging.token}")
       else
         backend.info("[slackistrano]   Webhook: #{@messaging.webhook}")
       end
-        backend.info("[slackistrano]   Payload: #{payload.to_json}")
-    end
 
+      backend.info("[slackistrano]   Payload: #{payload.to_json}")
+    end
   end
 end
