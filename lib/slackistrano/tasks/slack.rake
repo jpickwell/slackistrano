@@ -1,7 +1,31 @@
 # frozen_string_literal: true
 
+namespace :load do
+  task :defaults do
+    set :slackistrano_default_hooks, true
+
+    set :slackistrano, {}
+  end
+end
+
+namespace :deploy do
+  before(:starting, :check_slackistrano_hooks) do
+    return unless fetch(:slackistrano_default_hooks)
+
+    invoke 'slack:deploy:add_default_hooks'
+  end
+end
+
 namespace :slack do
   namespace :deploy do
+    task :add_default_hooks do
+      before 'deploy:starting', 'slack:deploy:updating'
+      before 'deploy:reverting', 'slack:deploy:reverting'
+      after 'deploy:finishing', 'slack:deploy:updated'
+      after 'deploy:finishing_rollback', 'slack:deploy:reverted'
+      after 'deploy:failed', 'slack:deploy:failed'
+    end
+
     desc 'Notify about updating deploy'
     task :updating do
       Slackistrano::Capistrano.new(self).run(:updating)
@@ -33,9 +57,3 @@ namespace :slack do
     end
   end
 end
-
-before 'deploy:updating', 'slack:deploy:updating'
-before 'deploy:reverting', 'slack:deploy:reverting'
-after 'deploy:finishing', 'slack:deploy:updated'
-after 'deploy:finishing_rollback', 'slack:deploy:reverted'
-after 'deploy:failed', 'slack:deploy:failed'
