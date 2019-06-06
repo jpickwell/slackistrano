@@ -16,6 +16,6 @@ FileUtils.cd(GEM_ROOT) do
   system!('gem install bundler --conservative')
   
   unless system('bin/bundle check')
-    system!("bin/bundle install -j#{PROC_COUNT} --clean --path=vendor/bundle")
+    system!("bundle install -j#{PROC_COUNT} --clean --path=vendor/bundle")
   end
 end
