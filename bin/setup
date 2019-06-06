@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'etc'
+require 'fileutils'
+
+GEM_ROOT = File.expand_path('..', __dir__)
+PROC_COUNT = Etc.nprocessors
+
+def system!(*args)
+  system(*args) || abort("\n== Command #{args} failed ==")
+end
+
+FileUtils.cd(GEM_ROOT) do
+  puts '== Installing dependencies =='
+  system!('gem install bundler --conservative')
+  
+  unless system('bin/bundle check')
+    system!("bin/bundle install -j#{PROC_COUNT} --clean --path=vendor/bundle")
+  end
+end
