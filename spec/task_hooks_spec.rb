@@ -42,7 +42,7 @@ describe Slackistrano do
 
     it 'invokes all slack:deploy tasks before slack:deploy:test' do
       expect(Rake::Task['slack:deploy:test'].prerequisites).to(
-        match(%w[updating updated reverting reverted failed])
+        match(%w[starting updating updated reverting reverted failed])
       )
     end
   end

@@ -56,7 +56,7 @@ namespace :slack do
     end
 
     desc 'Test Slack integration'
-    task test: %i[starting published failed] do
+    task test: %i[starting updating updated reverting reverted failed] do
       # all tasks run as dependencies
     end
   end

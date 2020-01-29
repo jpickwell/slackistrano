@@ -3,6 +3,8 @@
 module Slackistrano
   module Messaging
     class Null < Base
+      def payload_for_starting; end
+
       def payload_for_updating; end
 
       def payload_for_reverting; end
