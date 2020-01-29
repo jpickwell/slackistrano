@@ -4,6 +4,12 @@ require 'spec_helper'
 
 describe Slackistrano do
   describe 'before/after hooks' do
+    it 'invokes slack:deploy:starting before deploy:starting' do
+      expect(Rake::Task['deploy:starting'].prerequisites).to(
+        include('slack:deploy:starting')
+      )
+    end
+
     it 'invokes slack:deploy:updating before deploy:updating' do
       expect(Rake::Task['deploy:updating'].prerequisites).to(
         include('slack:deploy:updating')

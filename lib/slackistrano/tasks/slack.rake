@@ -21,14 +21,14 @@ namespace :slack do
     task :add_default_hooks do
       # show the starting message as soon as possible
       before 'deploy:starting', 'slack:deploy:starting'
-      
+
       # show the finished message as late as possible
       after 'deploy:finished', 'slack:deploy:finished'
-      
+
       # For the above tasks, the earliest we could show the starting messages is
       # before the "deploy" and "deploy:rollback" tasks. The latest we can show
       # the finished messages is after those tasks.
-      
+
       after 'deploy:failed', 'slack:deploy:failed'
     end
 

@@ -3,10 +3,10 @@
 require 'spec_helper'
 
 describe Slackistrano do
-  before(:all) { set :slackistrano, channel: %w[one two] }
+  before(:all) { set(:slackistrano, channel: %w[one two]) }
 
   context 'when :slack_channel is an array' do
-    %w[updating reverting updated reverted failed].each do |stage|
+    %w[starting updating reverting updated reverted failed].each do |stage|
       it "posts to slack on slack:deploy:#{stage} in every channel" do
         expect_any_instance_of(Slackistrano::Capistrano).to(
           receive(:post).twice

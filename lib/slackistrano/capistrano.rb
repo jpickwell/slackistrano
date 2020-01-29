@@ -11,6 +11,9 @@ module Slackistrano
   class Capistrano
     extend Forwardable
 
+    attr_reader :backend
+    private :backend
+
     def_delegators :env, :fetch, :run_locally
 
     def initialize(env)
@@ -18,21 +21,12 @@ module Slackistrano
       config = fetch(:slackistrano, {})
 
       @messaging =
-        case config
-        when false
-          Messaging::Null.new
-        when ->(o) { o.empty? }
-          Messaging::Deprecated.new(
-            env: @env,
-            team: fetch(:slack_team),
-            channel: fetch(:slack_channel),
-            token: fetch(:slack_token),
-            webhook: fetch(:slack_webhook)
-          )
-        else
+        if config
           opts = config.dup.merge(env: @env)
           klass = opts.delete(:klass) || Messaging::Default
           klass.new(opts)
+        else
+          Messaging::Null.new
         end
     end
 
@@ -47,12 +41,11 @@ module Slackistrano
 
       return if payload.nil?
 
-      payload =
-        {
-          username: @messaging.username,
-          icon_url: @messaging.icon_url,
-          icon_emoji: @messaging.icon_emoji
-        }.merge(payload)
+      payload = {
+        username: @messaging.username,
+        icon_url: @messaging.icon_url,
+        icon_emoji: @messaging.icon_emoji
+      }.merge(payload)
 
       channels = Array(@messaging.channels_for(action))
 
